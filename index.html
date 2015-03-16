@@ -48,9 +48,9 @@ The purpose of this exercise is to predict from the measurements the manner in w
 
 <p>First of all I loaded the required packages needed for this investigation. </p>
 
-<pre lang="r,"><code>library(caret)
-library(randomForest)
-</code></pre>
+<blockquote>
+<p>library(caret)
+library(randomForest)</p>
 
 <p>Then I imported the training set, which was already downloaded in the workspace</p>
 
@@ -70,26 +70,27 @@ dim(<span class="pl-vo">trainset</span>)</pre></div>
 <div class="highlight highlight-r"><pre><span class="pl-vo">M</span> <span class="pl-k">&lt;-</span> abs(cor(<span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">53</span>]))
 diag(<span class="pl-vo">M</span>) <span class="pl-k">&lt;-</span> <span class="pl-c1">0</span>
 <span class="pl-vo">correlations</span> <span class="pl-k">&lt;-</span> which(<span class="pl-vo">M</span><span class="pl-k">&gt;</span> <span class="pl-c1">0.8</span>, <span class="pl-v">arr.ind</span><span class="pl-k">=</span><span class="pl-c1">T</span>)
-<span class="pl-vo">correlations</span>
-</pre></div>
+<span class="pl-vo">correlations</span></pre></div>
+</blockquote>
 
-<p>If a variable correlates with only one other variable I choose to remove the one with the least variation. See the plots below. If variables correlate with more than one other variables I choose to keep the one which has the most correlations. For instance the variable roll-belt correlates with yaw-belt, total-accel-belt, accel-belt-y and accel-belt-z. But yaw-belt only correlates to roll-belt. roll-belt, total-accel-belt, accel-belt-y and accel-belt-ze correlates to each other.     </p>
-
-<div class="highlight highlight-r"><pre><span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">18</span>,<span class="pl-c1">19</span>)]
-<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
-plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>gyros_arm_x (18)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>gyros_arm_x (19)<span class="pl-pds">"</span></span>)
-<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">21</span>,<span class="pl-c1">24</span>)]
-<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
-plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>accel_arm_x (21)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>magnet_arm_x (24)<span class="pl-pds">"</span></span>)
-<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">25</span>,<span class="pl-c1">26</span>)]
-<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
-plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>magnet_arm_y (25)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>magnet_arm_Z (26)<span class="pl-pds">"</span></span>)
-<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">28</span>,<span class="pl-c1">34</span>)]
-<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
-plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>pitch_dumbbell (28)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>accel_dumbbell_x (34)<span class="pl-pds">"</span></span>)
-<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">29</span>,<span class="pl-c1">36</span>)]
-<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
-plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>yaw_dumbbell (29)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>accel_dumbbell_z (36)<span class="pl-pds">"</span></span>)</pre></div>
+<pre><code>If a variable correlates with only one other variable I choose to remove the one with the least variation. See the plots below. If variables correlate with more than one other variables I choose to keep the one which has the most correlations. For instance the variable roll-belt correlates with yaw-belt, total-accel-belt, accel-belt-y and accel-belt-z. But yaw-belt only correlates to roll-belt. roll-belt, total-accel-belt, accel-belt-y and accel-belt-ze correlates to each other.     
+```{r}
+smallTrain &lt;- traindata[,c(18,19)]
+prComp &lt;- prcomp(smallTrain)
+plot(prComp$x[,1], prComp$x[,2], xlab= "gyros_arm_x (18)", ylab = "gyros_arm_x (19)")
+smallTrain &lt;- traindata[,c(21,24)]
+prComp &lt;- prcomp(smallTrain)
+plot(prComp$x[,1], prComp$x[,2], xlab= "accel_arm_x (21)", ylab = "magnet_arm_x (24)")
+smallTrain &lt;- traindata[,c(25,26)]
+prComp &lt;- prcomp(smallTrain)
+plot(prComp$x[,1], prComp$x[,2], xlab= "magnet_arm_y (25)", ylab = "magnet_arm_Z (26)")
+smallTrain &lt;- traindata[,c(28,34)]
+prComp &lt;- prcomp(smallTrain)
+plot(prComp$x[,1], prComp$x[,2], xlab= "pitch_dumbbell (28)", ylab = "accel_dumbbell_x (34)")
+smallTrain &lt;- traindata[,c(29,36)]
+prComp &lt;- prcomp(smallTrain)
+plot(prComp$x[,1], prComp$x[,2], xlab= "yaw_dumbbell (29)", ylab = "accel_dumbbell_z (36)")
+</code></pre>
 
 <div class="highlight highlight-r"><pre><span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">45</span>]
 <span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">36</span>]
@@ -162,7 +163,7 @@ predict(<span class="pl-vo">modFit4</span>, <span class="pl-vo">testdata</span>)
 <h1>
 <a id="conclusion" class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conclusion</h1>
 
-<p>I selected nine variables out of 159 possible ones, and reached an accuracy of 100%. So the expected out-of-sample error should be near 0%. </p>
+<p>I selected nine variables out of 159 possible ones, and reached an accuracy of 100%. So the expected out-of-sample error should be near 0%. &gt; </p>
       </section>
     </div>
 
