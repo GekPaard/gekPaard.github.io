@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Gekpaard.GitHub.io : courseraML">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Gekpaard.GitHub.io</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/GekPaard">View on GitHub</a>
+
+          <h1 id="project_title">Gekpaard.GitHub.io</h1>
+          <h2 id="project_tagline">courseraML</h2>
+
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <hr>
+
+<p>title: "Machine Learning Exercise"
+author: "Gek Paard"
+date: "Friday, March 13, 2015"</p>
+
+<h2>
+<a id="output-html_document" class="anchor" href="#output-html_document" aria-hidden="true"><span class="octicon octicon-link"></span></a>output: html_document</h2>
+
+<h2>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction</h2>
+
+<p>In the MOOC course "Practical Machine Learning" of the Johns Hopkins University the project is to investigate the Weight Lifting Exercises Dataset which is generously provided by the investigators. See their paper: Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) Stuttgart, Germany: ACM SIGCHI, 2013. See also <a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a>.<br>
+The dataset consists of measurements by sensors on six individuals who performed the Unilateral Dumbbell Biceps Curl. The measurements were made by sensors on the forearm, biceps, belt and dumbbell. The curl had to be performed in five different ways. This manner is found in the variable "classe" in the training set. Classes, class "A" is the good one, and the classes "B", "C", "D" and "E" are wrong performances. The subjects were superviced by trained personell who made sure that the exercises where performed in the correct right or wrong manner.
+The purpose of this exercise is to predict from the measurements the manner in which they did the exercises.</p>
+
+<h2>
+<a id="investigation" class="anchor" href="#investigation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Investigation</h2>
+
+<p>First of all I loaded the required packages needed for this investigation. </p>
+
+<pre lang="r,"><code>library(caret)
+library(randomForest)
+</code></pre>
+
+<p>Then I imported the training set, which was already downloaded in the workspace</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">trainset</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-s1"><span class="pl-pds">"</span>pml-training.csv<span class="pl-pds">"</span></span>)
+dim(<span class="pl-vo">trainset</span>)</pre></div>
+
+<p>As can be seen there a lot of variables. Many of them wil not be relevant predictors. The first 7 variables shouldn't be relevant, because they are about who performed the exercise, on which time, the following number etc. So I removed them from the dataset. Then I set the abundance of NA's to zero's, because randomForest can't cope with NA's. (I choose randomForest because the train function of caret takes a very long time.) Then I removed all the variables with little or no variation from the dataset. They will not be important predictors. </p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">traindata</span>   <span class="pl-k">&lt;-</span> <span class="pl-vo">trainset</span>
+<span class="pl-vo">traindata</span>   <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">7</span>)]
+<span class="pl-vo">traindata</span>[is.na(<span class="pl-vo">traindata</span>)] <span class="pl-k">&lt;-</span> <span class="pl-c1">0</span>
+<span class="pl-vo">nzv</span>         <span class="pl-k">&lt;-</span> nearZeroVar(<span class="pl-vo">traindata</span>)
+<span class="pl-vo">traindata</span>   <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[<span class="pl-k">-</span><span class="pl-vo">nzv</span>]</pre></div>
+
+<p>Then I checked for correlations in the remaining variables. There are several.  </p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">M</span> <span class="pl-k">&lt;-</span> abs(cor(<span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">53</span>]))
+diag(<span class="pl-vo">M</span>) <span class="pl-k">&lt;-</span> <span class="pl-c1">0</span>
+<span class="pl-vo">correlations</span> <span class="pl-k">&lt;-</span> which(<span class="pl-vo">M</span><span class="pl-k">&gt;</span> <span class="pl-c1">0.8</span>, <span class="pl-v">arr.ind</span><span class="pl-k">=</span><span class="pl-c1">T</span>)
+<span class="pl-vo">correlations</span>
+</pre></div>
+
+<p>If a variable correlates with only one other variable I choose to remove the one with the least variation. See the plots below. If variables correlate with more than one other variables I choose to keep the one which has the most correlations. For instance the variable roll-belt correlates with yaw-belt, total-accel-belt, accel-belt-y and accel-belt-z. But yaw-belt only correlates to roll-belt. roll-belt, total-accel-belt, accel-belt-y and accel-belt-ze correlates to each other.     </p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">18</span>,<span class="pl-c1">19</span>)]
+<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
+plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>gyros_arm_x (18)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>gyros_arm_x (19)<span class="pl-pds">"</span></span>)
+<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">21</span>,<span class="pl-c1">24</span>)]
+<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
+plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>accel_arm_x (21)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>magnet_arm_x (24)<span class="pl-pds">"</span></span>)
+<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">25</span>,<span class="pl-c1">26</span>)]
+<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
+plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>magnet_arm_y (25)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>magnet_arm_Z (26)<span class="pl-pds">"</span></span>)
+<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">28</span>,<span class="pl-c1">34</span>)]
+<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
+plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>pitch_dumbbell (28)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>accel_dumbbell_x (34)<span class="pl-pds">"</span></span>)
+<span class="pl-vo">smallTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,c(<span class="pl-c1">29</span>,<span class="pl-c1">36</span>)]
+<span class="pl-vo">prComp</span> <span class="pl-k">&lt;-</span> prcomp(<span class="pl-vo">smallTrain</span>)
+plot(<span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">1</span>], <span class="pl-vo">prComp</span><span class="pl-k">$</span><span class="pl-vo">x</span>[,<span class="pl-c1">2</span>], <span class="pl-v">xlab</span><span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>yaw_dumbbell (29)<span class="pl-pds">"</span></span>, <span class="pl-v">ylab</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>accel_dumbbell_z (36)<span class="pl-pds">"</span></span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">45</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">36</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">34</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">33</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">31</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">26</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">24</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">19</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">11</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">10</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">9</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">8</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">4</span>]
+<span class="pl-vo">traindata</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">traindata</span>[,<span class="pl-k">-</span><span class="pl-c1">3</span>]
+dim(<span class="pl-vo">traindata</span>)</pre></div>
+
+<p>There are now 38 potential predictors available, which is fortunate because the function randomForest can only handle 53 predictors.<br>
+A check if the remaining variables are good predictors:  </p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">modFit1</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-vo">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-vo">traindata</span>)
+<span class="pl-vo">predictionClassedata</span>  <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFit1</span>, <span class="pl-vo">trainset</span>)
+confusionMatrix(<span class="pl-vo">predictionClassedata</span>, <span class="pl-vo">trainset</span><span class="pl-k">$</span><span class="pl-vo">classe</span>)
+varImp(<span class="pl-vo">modFit1</span>)
+</pre></div>
+
+<p>This seems like a perfect fit!<br>
+The function varImpPlot shows the importance of the predictors. I want to check if als the variables are needed for a good prediction. This time I will use only the variables with an importance of 500 and higher:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">modFit2</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-vo">classe</span> <span class="pl-k">~</span> <span class="pl-vo">roll_belt</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_dumbbell_z</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_belt</span>           <span class="pl-k">+</span>
+                                 <span class="pl-vo">magnet_dumbbell_y</span> <span class="pl-k">+</span> <span class="pl-vo">roll_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_dumbbell_x</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_belt_y</span> <span class="pl-k">+</span>
+                                 <span class="pl-vo">magnet_belt_z</span> <span class="pl-k">+</span> <span class="pl-vo">accel_dumbbell_y</span> <span class="pl-k">+</span> <span class="pl-vo">roll_dumbbell</span>, <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-vo">traindata</span>)
+<span class="pl-vo">predictionClassedata</span>  <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFit2</span>, <span class="pl-vo">trainset</span>)
+confusionMatrix(<span class="pl-vo">predictionClassedata</span>, <span class="pl-vo">trainset</span><span class="pl-k">$</span><span class="pl-vo">classe</span>)
+varImp(<span class="pl-vo">modFit2</span>)
+</pre></div>
+
+<p>This still looks like a perfect fit. Now I remove the lowest important predictor, magnet-belt-y, from the predictors.  </p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">modFit3</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-vo">classe</span> <span class="pl-k">~</span> <span class="pl-vo">roll_belt</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_dumbbell_z</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_belt</span>  <span class="pl-k">+</span>
+                                 <span class="pl-vo">magnet_dumbbell_y</span> <span class="pl-k">+</span> <span class="pl-vo">roll_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_dumbbell_x</span>        <span class="pl-k">+</span> 
+                                 <span class="pl-vo">magnet_belt_z</span> <span class="pl-k">+</span> <span class="pl-vo">accel_dumbbell_y</span> <span class="pl-k">+</span> <span class="pl-vo">roll_dumbbell</span>, <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-vo">traindata</span>)
+<span class="pl-vo">predictionClassedata</span>  <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFit3</span>, <span class="pl-vo">trainset</span>)
+confusionMatrix(<span class="pl-vo">predictionClassedata</span>, <span class="pl-vo">trainset</span><span class="pl-k">$</span><span class="pl-vo">classe</span>)
+varImp(<span class="pl-vo">modFit3</span>)
+</pre></div>
+
+<p>This also looks like a perfect fit. Now I remove again the lowest important predictor of this set, roll-dumbbell, from the predictors.  </p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">modFit4</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-vo">classe</span> <span class="pl-k">~</span> <span class="pl-vo">roll_belt</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_dumbbell_z</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_belt</span> <span class="pl-k">+</span>
+                                 <span class="pl-vo">magnet_dumbbell_y</span> <span class="pl-k">+</span> <span class="pl-vo">roll_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_dumbbell_x</span>       <span class="pl-k">+</span> 
+                                 <span class="pl-vo">magnet_belt_z</span> <span class="pl-k">+</span> <span class="pl-vo">accel_dumbbell_y</span> , <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-vo">traindata</span>)
+<span class="pl-vo">predictionClassedata</span>  <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFit4</span>, <span class="pl-vo">trainset</span>)
+confusionMatrix(<span class="pl-vo">predictionClassedata</span>, <span class="pl-vo">trainset</span><span class="pl-k">$</span><span class="pl-vo">classe</span>)
+varImp(<span class="pl-vo">modFit4</span>)
+</pre></div>
+
+<p>This also looks like a perfect fit. Again I remove the lowest important predictor of this set, magnet-dumbbell-x, from the predictors.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">modFit5</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-vo">classe</span> <span class="pl-k">~</span> <span class="pl-vo">roll_belt</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_dumbbell_z</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">pitch_belt</span> <span class="pl-k">+</span>
+                          <span class="pl-vo">magnet_dumbbell_y</span> <span class="pl-k">+</span> <span class="pl-vo">roll_forearm</span> <span class="pl-k">+</span> <span class="pl-vo">magnet_belt_z</span> <span class="pl-k">+</span> <span class="pl-vo">accel_dumbbell_y</span> , <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-vo">traindata</span>)
+<span class="pl-vo">predictionClassedata</span>  <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFit5</span>, <span class="pl-vo">trainset</span>)
+confusionMatrix(<span class="pl-vo">predictionClassedata</span>, <span class="pl-vo">trainset</span><span class="pl-k">$</span><span class="pl-vo">classe</span>)</pre></div>
+
+<p>This isn't a perfect fit anymore. So I use modFit4 for the prediction of the classes of testdata, which I also placed in the workspace. </p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">testdata</span> <span class="pl-k">&lt;-</span> read.csv (<span class="pl-s1"><span class="pl-pds">"</span>pml-testing.csv<span class="pl-pds">"</span></span>)
+predict(<span class="pl-vo">modFit4</span>, <span class="pl-vo">testdata</span>)</pre></div>
+
+<h1>
+<a id="conclusion" class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conclusion</h1>
+
+<p>I selected nine variables out of 159 possible ones, and reached an accuracy of 100%. So the expected out-of-sample error should be near 0%. </p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
